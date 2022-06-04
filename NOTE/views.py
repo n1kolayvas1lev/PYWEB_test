@@ -1,72 +1,53 @@
-from rest_framework.views import APIView
-from rest_framework.generics import ListAPIView
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import generics
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-
+from NOTE import filters, permissions, serializers
 from NOTE.models import Note
-from . import serializers, filters, permissions
 
 
-class NoteListCreateAPIView(APIView):
-    """ Представление, которое позволяет вывести весь список записей и добавить новую запись. """
-
-    def get(self, request: Request):
-        objects = Note.objects.all()
-        serializer = serializers.NoteSerializer(
-            instance=objects,
-            many=True,
-        )
-        return Response(serializer.data)
-
-    def post(self, request: Request):
-        # Передаем в сериалайзер (валидатор) данные из запроса
-        serializer = serializers.NoteSerializer(data=request.data)
-
-        # Проверка параметров
-        if not serializer.is_valid():  # serializer.is_valid(raise_exception=True)
-            return Response(
-                serializer.errors,  # serializer.errors будут все ошибки
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Записываем новую статью и добавляем текущего пользователя как автора
-        serializer.save(author=request.user)
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED
-        )
-
-
-class PublicNoteListAPIView(ListAPIView):
+class NoteListCreateAPIView(generics.ListCreateAPIView):
+    """
+    Вывод списка заметок и создание заметки
+    """
     queryset = Note.objects.all()
-    serializer_class = serializers.NoteDetailSerializer
+    serializer_class = serializers.NoteSerializer
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = filters.note_filter
+    filterset_class = filters.NoteFilter
 
     def get_queryset(self):
+        """
+        Получения доступа только к заметкам пользователя,
+        а также заметкам других пользователей, которые отмечены как публичные
+        """
         queryset = super().get_queryset()
+        return queryset.filter(Q(author=self.request.user) | Q(public=True))
 
-        return queryset \
-            .filter(public=True) \
-            .order_by("-created_at", "-important")\
-            .prefetch_related("authors",)
+    def perform_create(self, serializer):
+        """
+        Передача данных пользователя как автора заметки
+        """
+        serializer.save(author=self.request.user)
+        return serializer
 
 
 class NoteDetailUpdateDeleteAPIView(generics.RetrieveUpdateDestroyAPIView):
-    """Класс представления для вывода данных о конкретной заметке, ее изменения и удаления"""
+    """
+    Представление для вывода данных о конкретной заметке, ее изменения и удаления
+    """
     queryset = Note.objects.all()
     serializer_class = serializers.NoteSerializer
     permission_classes = [IsAuthenticated & permissions.GetPublicNote]
 
     def perform_update(self, serializer):
-        """Переопределение метода update, которым изменения разрешено вносить только автору заметки"""
+        """
+        Изменения разрешено вносить только автору заметки
+        """
         author = self.get_object().author_id
         user = self.request.user.id
         if author == user:
             serializer.save()
             return serializer
-        raise PermissionError('Невозможно изменить. (Недостаточно прав.)')
+        else:
+            raise PermissionError('Denied.')

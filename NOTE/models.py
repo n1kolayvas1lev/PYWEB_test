@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 
 
 def deadline_date():
-    deadline_datetime = (datetime.datetime.today() + datetime.timedelta(days=1)).strftime('%d/%m/%y %H:%M:%S')
+    deadline_datetime = (datetime.datetime.today() + datetime.timedelta(days=1))  # .strftime('%y/%m/%d %H:%M')
     return deadline_datetime
 
 
