@@ -24,7 +24,9 @@ class Note(models.Model):
     )
     author = models.ForeignKey(
         User,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        verbose_name="Автор",
+        editable=False,
     )
     status = models.SmallIntegerField(
         max_length=1,
@@ -50,5 +52,5 @@ class Note(models.Model):
 
 
     class Meta:
-        verbose_name = 'Заметка'
-        verbose_name_plural = 'Заметки'
+        verbose_name = 'заметка'
+        verbose_name_plural = 'заметки'

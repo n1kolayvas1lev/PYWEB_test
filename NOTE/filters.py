@@ -1,5 +1,6 @@
 from typing import Optional
 from django.db.models import QuerySet
+from django.db.models.query import QuerySet
 
 
 def note_filter(
