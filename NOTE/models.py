@@ -29,7 +29,6 @@ class Note(models.Model):
         editable=False,
     )
     status = models.SmallIntegerField(
-        max_length=1,
         choices=status_choices,
         default=active,
     )
